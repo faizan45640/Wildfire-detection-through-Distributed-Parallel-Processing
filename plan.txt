@@ -1,0 +1,204 @@
+PHASE 1 — Environment Setup
+Both Laptops
+bashsudo apt update
+sudo apt install -y gcc g++ mpich
+sudo apt install -y python3 python3-pip
+pip3 install numpy matplotlib
+Verify
+bashg++ --version
+mpirun --version
+
+
+
+Folder Structure (create this)
+wildfire-pdc/
+├── serial/
+│   └── wildfire_serial.cpp
+├── parallel/
+│   └── wildfire_parallel.cpp
+├── dataset/
+│   └── generate_grid.py
+├── results/
+│   └── plot_results.py
+├── hostfile
+└── report/
+
+PHASE 2 — Dataset Generation
+Who does this: Either person (You recommended)
+What it is
+A Python script that generates a synthetic thermal grid — a 2D array of temperature values representing a landscape. Some zones are planted with high temperatures simulating fire.
+Script logic (write this in dataset/generate_grid.py)
+Step 1 — Create a 1000×1000 grid of normal temperatures (20°C to 60°C)
+Step 2 — Plant 3-5 "fire zones" manually at specific coordinates with temperatures 250°C to 400°C
+Step 3 — Add some random noise around fire zones to make it realistic
+Step 4 — Save grid as a binary file thermal_grid.bin
+Step 5 — Also save a PNG image of the grid using matplotlib so you can show it in your report as "input data"
+Output files
+dataset/
+├── thermal_grid.bin     ← C++ programs read this
+├── grid_visual.png      ← Show in report as input
+└── generate_grid.py
+Test sizes to generate (for scalability testing later)
+Small:  500  × 500   → quick testing
+Medium: 1000 × 1000  → main demo
+Large:  2000 × 2000  → scalability discussion
+
+PHASE 3 — Serial Version
+Who does this: You
+File: serial/wildfire_serial.cpp
+What it does
+Reads the thermal grid, loops over every single pixel one by one, checks if temperature exceeds fire threshold (200°C), marks it as fire, counts total fire pixels, records coordinates.
+Logic step by step
+Step 1 — Read grid dimensions from file header
+Step 2 — Allocate 2D array in memory
+Step 3 — Load all temperature values from thermal_grid.bin
+Step 4 — Start timer (use clock_gettime for precision)
+Step 5 — Loop: for every row, for every column:
+
+If temperature > 200 → mark as fire pixel
+Store its row, column coordinates
+Increment fire counter
+
+Step 6 — Stop timer
+Step 7 — Print:
+
+Total pixels processed
+Total fire pixels found
+List of fire coordinates
+Execution time in milliseconds
+
+Step 8 — Save fire map to results/serial_firemap.bin
+Compile command
+bashg++ -o wildfire_serial serial/wildfire_serial.cpp
+Run command
+bash./wildfire_serial
+Record this number
+Write down the execution time. This is your baseline for speedup calculation.
+
+PHASE 4 — OpenMP Parallel Version
+Who does this: Partner
+File: parallel/wildfire_openmp.cpp
+What it does
+Same logic as serial but uses OpenMP to process multiple rows simultaneously using threads on one machine.
+Logic step by step
+Step 1 — Read grid (same as serial)
+Step 2 — Start timer
+Step 3 — Add OpenMP directive above the loop:
+cpp#pragma omp parallel for reduction(+:fire_count) schedule(dynamic)
+Step 4 — Same detection loop runs but now split across threads automatically
+Step 5 — Use reduction clause to safely sum fire_count across threads (avoids race condition)
+Step 6 — Use critical section when writing fire coordinates to shared list (avoids data corruption)
+Step 7 — Stop timer
+Step 8 — Print execution time + results
+Compile command (important: add -fopenmp flag)
+bashg++ -fopenmp -o wildfire_openmp parallel/wildfire_openmp.cpp
+Run with different thread counts (for scalability)
+bashOMP_NUM_THREADS=1 ./wildfire_openmp
+OMP_NUM_THREADS=2 ./wildfire_openmp
+OMP_NUM_THREADS=4 ./wildfire_openmp
+OMP_NUM_THREADS=8 ./wildfire_openmp
+Record all times
+These give you your scalability table for the report.
+
+PHASE 5 — MPI + OpenMP Combined Version
+Who does this: Both together (this is the main deliverable)
+File: parallel/wildfire_parallel.cpp
+What it does
+MPI divides the grid across both laptops. Each laptop then uses OpenMP threads to process its chunk in parallel. Results sent back to master.
+Logic step by step
+Step 1 — Master (Laptop A) only:
+
+Read full grid from file
+Divide grid into equal row chunks (total rows ÷ number of MPI processes)
+Example: 1000 rows, 4 processes → each gets 250 rows
+
+Step 2 — MPI_Scatter:
+
+Master sends each chunk to its respective process
+Process 0 keeps chunk 0 (its own)
+Process 1 on Laptop B receives chunk 1
+Process 2 on Laptop A receives chunk 2
+Process 3 on Laptop B receives chunk 3
+
+Step 3 — Each process independently:
+
+Runs OpenMP parallel loop on its received chunk
+Each thread checks pixels for fire threshold
+Counts local fire pixels using reduction
+
+Step 4 — MPI_Gather:
+
+Each process sends its local fire count back to master
+Each process sends its local fire map back to master
+
+Step 5 — Master only:
+
+Combines all fire maps into complete grid
+Sums all fire counts
+Stops timer
+Prints total execution time + results
+
+Step 6 — Save combined fire map
+Compile command
+bashmpicxx -fopenmp -o wildfire_parallel parallel/wildfire_parallel.cpp
+Hostfile setup (do this when together on same network)
+bash# On Laptop A, create hostfile
+nano hostfile
+
+# Write inside:
+192.168.X.X slots=2    ← Laptop A IP
+192.168.X.X slots=2    ← Laptop B IP
+Run command (from Laptop A)
+bashmpirun -np 4 --hostfile hostfile ./wildfire_parallel
+If on same laptop only (hotspot not available)
+bashmpirun --allow-run-as-root -np 4 ./wildfire_parallel
+
+PHASE 6 — Testing & Performance
+Who does this: Both
+Step 1 — Collect all execution times in this table
+VersionGrid SizeProcesses/ThreadsTime (ms)Serial500×5001?Serial1000×10001?Serial2000×20001?OpenMP1000×10002 threads?OpenMP1000×10004 threads?OpenMP1000×10008 threads?MPI+OMP1000×10002 processes?MPI+OMP1000×10004 processes?
+Step 2 — Calculate Speedup
+Speedup = Serial Time / Parallel Time
+
+Example:
+Serial time    = 800ms
+Parallel time  = 210ms
+Speedup        = 800/210 = 3.8x
+Step 3 — Calculate Efficiency
+Efficiency = Speedup / Number of Processes × 100%
+
+Example:
+Efficiency = 3.8 / 4 × 100 = 95%
+Step 4 — Plot graphs (write in results/plot_results.py)
+Graph 1 — Bar chart: Serial vs OpenMP vs MPI+OpenMP execution time
+Graph 2 — Line chart: Speedup vs number of threads/processes
+Graph 3 — Line chart: Efficiency vs number of threads/processes
+Graph 4 — Heatmap: Fire detection output (show fire zones in red on grid)
+Save all graphs as PNG for report.
+Step 5 — Verify correctness
+Run serial and parallel on same dataset. Both must detect exact same fire pixels. If counts match → implementation is correct.
+
+PHASE 7 — Report
+Who does which section
+SectionWhoAbstractTogether (write last)IntroductionPartnerProblem statementYouBackground/conceptsPartnerMethodologyYouSerial algorithm explanationYouParallel algorithm explanationPartnerTools and environmentPartnerScreenshots/resultsBothPerformance tables/graphsYouTesting and evaluationBothSynchronization analysisPartnerLimitationsYouEthical considerationsPartnerConclusionTogetherReferencesBoth
+Key points to cover in report
+Synchronization analysis section must mention:
+
+OpenMP reduction clause prevents race condition on fire counter
+OpenMP critical section protects shared coordinate list
+MPI communication is blocking (MPI_Scatter, MPI_Gather) — no deadlock possible
+Border rows don't need exchange (detection is per-pixel, no dependency on neighbors)
+
+Ethical considerations must mention:
+
+Synthetic dataset used — no privacy concerns
+Real application could help save lives
+Responsible resource usage
+Code is original work
+
+Limitations must mention:
+
+Tested on simulated MPI (or 2 laptops on hotspot)
+No real satellite data used
+Network latency not measured
+GPU acceleration not included due to hardware constraints
