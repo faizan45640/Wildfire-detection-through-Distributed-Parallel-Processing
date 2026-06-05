@@ -1,0 +1,8 @@
+# Copy this file to hostfile and replace with your Tailscale IPs
+# cp hostfile.example hostfile
+#
+# YOUR_TAILSCALE_IP slots=2
+# PARTNER_TAILSCALE_IP slots=2
+
+100.0.0.1 slots=2
+100.0.0.2 slots=2

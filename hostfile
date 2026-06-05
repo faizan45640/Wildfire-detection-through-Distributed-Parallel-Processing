@@ -1,3 +1,0 @@
-# MPI hostfile — replace with your laptop IPs when running across two machines
-# 192.168.X.X slots=2    # Laptop A
-# 192.168.X.X slots=2    # Laptop B

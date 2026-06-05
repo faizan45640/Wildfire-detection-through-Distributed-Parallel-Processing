@@ -1,0 +1,55 @@
+# compiled programs
+wildfire_serial
+wildfire_openmp
+wildfire_parallel
+
+# local mpi config (real tailscale IPs, machine names)
+hostfile
+hostfile.local
+**/hostfile.local
+
+# generated datasets (large — run dataset/generate_grid.py)
+dataset/*.bin
+dataset/thermal_grid_active.bin
+dataset/grid_visual*.png
+
+# stray generated files in project root
+/thermal_grid*.bin
+/grid_visual*.png
+
+# benchmark and run output (regenerate with run_benchmarks.sh)
+results/*.bin
+results/timings.txt
+results/timings_summary.txt
+results/mpi_remote_run.txt
+results/graph*.png
+results/serial_output.txt
+
+# secrets and keys (never commit)
+.env
+.env.*
+*.pem
+*.key
+id_rsa
+id_ed25519
+id_ed25519.pub
+known_hosts
+.ssh/
+
+# python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# editor and os junk
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# local personal notes (optional)
+notes.txt
+setup-local.txt
