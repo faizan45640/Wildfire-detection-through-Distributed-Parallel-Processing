@@ -1,9 +1,10 @@
 # Generate synthetic thermal grid for wildfire detection project
-# Creates datasets for 500x500, 1000x1000, and 2000x2000
+# Creates datasets for different grid sizes
 
 import struct
 import random
 import os
+import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,8 +12,8 @@ import numpy as np
 # always save files inside dataset folder
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-# sizes for scalability testing
-GRID_SIZES = [500, 1000, 2000]
+# small sizes for table + large size to show real speedup
+GRID_SIZES = [500, 1000, 2000, 5000]
 
 # fire zones: row, column, temperature
 fire_zones = [
@@ -21,18 +22,19 @@ fire_zones = [
     [720, 150, 310],
     [850, 780, 395],
     [310, 880, 265],
+    [2500, 2100, 360],
+    [4100, 3200, 330],
+    [4700, 900, 390],
 ]
 
 radius = 40
 
 
 def make_grid(rows, cols):
-    # Step 1: normal background temperature
-    grid = np.zeros((rows, cols))
+    random.seed(42)
 
-    for i in range(rows):
-        for j in range(cols):
-            grid[i][j] = random.uniform(20, 60)
+    # Step 1: normal background temperature
+    grid = np.random.uniform(20, 60, size=(rows, cols))
 
     # Step 2 and 3: plant fire zones with noise
     for zone in fire_zones:
@@ -54,7 +56,7 @@ def make_grid(rows, cols):
                     noise = random.uniform(-10, 10)
                     grid[i][j] = 120 + noise
 
-    return grid
+    return grid.astype(np.float32)
 
 
 def save_grid(grid, rows, cols, size):
@@ -65,39 +67,33 @@ def save_grid(grid, rows, cols, size):
     with open(bin_name, "wb") as file:
         file.write(struct.pack("i", rows))
         file.write(struct.pack("i", cols))
+        file.write(grid.tobytes())
 
-        for i in range(rows):
-            for j in range(cols):
-                file.write(struct.pack("f", grid[i][j]))
+    # Step 5: save image (skip very large grids to save time)
+    if size <= 2000:
+        plt.imshow(grid, cmap="hot")
+        plt.title("Thermal Grid Input Data (" + str(size) + "x" + str(size) + ")")
+        plt.colorbar(label="Temperature (C)")
+        plt.savefig(png_name)
+        plt.close()
+        print("Saved", bin_name, "and", png_name)
+    else:
+        print("Saved", bin_name, "(image skipped for large grid)")
 
-    # Step 5: save image
-    plt.imshow(grid, cmap="hot")
-    plt.title("Thermal Grid Input Data (" + str(size) + "x" + str(size) + ")")
-    plt.colorbar(label="Temperature (C)")
-    plt.savefig(png_name)
-    plt.close()
+    fire_count = int(np.sum(grid > 200))
 
-    fire_count = 0
-    for i in range(rows):
-        for j in range(cols):
-            if grid[i][j] > 200:
-                fire_count = fire_count + 1
-
-    print("Saved", bin_name, "and", png_name)
     print("Grid size:", rows, "x", cols)
     print("Fire pixels (>200 C):", fire_count)
     print()
 
 
-random.seed(42)
-
 for size in GRID_SIZES:
+    print("Generating", size, "x", size, "grid...")
     grid = make_grid(size, size)
     save_grid(grid, size, size, size)
 
-# keep thermal_grid.bin as the default 1000x1000 file for C++ programs
-import shutil
-shutil.copy("thermal_grid_1000.bin", "thermal_grid.bin")
-shutil.copy("grid_visual_1000.png", "grid_visual.png")
+# default file used by C++ programs
+shutil.copy("thermal_grid_5000.bin", "thermal_grid.bin")
 
 print("All datasets generated.")
+print("Default dataset is now thermal_grid.bin (5000x5000).")
