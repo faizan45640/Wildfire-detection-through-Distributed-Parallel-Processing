@@ -21,9 +21,18 @@ dataset/grid_visual*.png
 results/*.bin
 results/timings.txt
 results/timings_summary.txt
+results/remote_timings.txt
 results/mpi_remote_run.txt
 results/graph*.png
 results/serial_output.txt
+
+# internal report tooling — submit report.docx/pdf separately; hide generator from repo
+report/generate_report.py
+report/report.md
+
+# internal team planning and remote-run helpers (not for submission repo)
+plan.txt
+run_remote_mpi.sh
 
 # secrets and keys (never commit)
 .env

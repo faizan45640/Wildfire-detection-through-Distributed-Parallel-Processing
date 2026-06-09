@@ -1,5 +1,5 @@
 PHASE 1 — Environment Setup
-Both Laptops
+All 4 Machines
 bashsudo apt update
 sudo apt install -y gcc g++ mpich
 sudo apt install -y python3 python3-pip
@@ -24,7 +24,7 @@ wildfire-pdc/
 └── report/
 
 PHASE 2 — Dataset Generation
-Who does this: Either person (You recommended)
+Who does this: Person 1 (any one person can do this)
 What it is
 A Python script that generates a synthetic thermal grid — a 2D array of temperature values representing a landscape. Some zones are planted with high temperatures simulating fire.
 Script logic (write this in dataset/generate_grid.py)
@@ -44,7 +44,7 @@ Medium: 1000 × 1000  → main demo
 Large:  2000 × 2000  → scalability discussion
 
 PHASE 3 — Serial Version
-Who does this: You
+Who does this: Person 2
 File: serial/wildfire_serial.cpp
 What it does
 Reads the thermal grid, loops over every single pixel one by one, checks if temperature exceeds fire threshold (200°C), marks it as fire, counts total fire pixels, records coordinates.
@@ -76,7 +76,7 @@ Record this number
 Write down the execution time. This is your baseline for speedup calculation.
 
 PHASE 4 — OpenMP Parallel Version
-Who does this: Partner
+Who does this: Person 3
 File: parallel/wildfire_openmp.cpp
 What it does
 Same logic as serial but uses OpenMP to process multiple rows simultaneously using threads on one machine.
@@ -101,12 +101,12 @@ Record all times
 These give you your scalability table for the report.
 
 PHASE 5 — MPI + OpenMP Combined Version
-Who does this: Both together (this is the main deliverable)
+Who does this: All 4 together (main deliverable — pair up for debugging)
 File: parallel/wildfire_parallel.cpp
 What it does
-MPI divides the grid across both laptops. Each laptop then uses OpenMP threads to process its chunk in parallel. Results sent back to master.
+MPI divides the grid across all 4 machines. Each machine runs one MPI process and uses OpenMP threads to process its chunk in parallel. Results sent back to master.
 Logic step by step
-Step 1 — Master (Laptop A) only:
+Step 1 — Master (Machine 1) only:
 
 Read full grid from file
 Divide grid into equal row chunks (total rows ÷ number of MPI processes)
@@ -116,9 +116,9 @@ Step 2 — MPI_Scatter:
 
 Master sends each chunk to its respective process
 Process 0 keeps chunk 0 (its own)
-Process 1 on Laptop B receives chunk 1
-Process 2 on Laptop A receives chunk 2
-Process 3 on Laptop B receives chunk 3
+Process 1 on Machine 2 receives chunk 1
+Process 2 on Machine 3 receives chunk 2
+Process 3 on Machine 4 receives chunk 3
 
 Step 3 — Each process independently:
 
@@ -141,20 +141,22 @@ Prints total execution time + results
 Step 6 — Save combined fire map
 Compile command
 bashmpicxx -fopenmp -o wildfire_parallel parallel/wildfire_parallel.cpp
-Hostfile setup (do this when together on same network)
-bash# On Laptop A, create hostfile
+Hostfile setup (do this when all 4 on same network or Tailscale)
+bash# On Machine 1 (master), create hostfile
 nano hostfile
 
-# Write inside:
-192.168.X.X slots=2    ← Laptop A IP
-192.168.X.X slots=2    ← Laptop B IP
-Run command (from Laptop A)
+# Write inside (1 process per machine):
+192.168.X.X slots=1    ← Machine 1 IP
+192.168.X.X slots=1 user=USER2    ← Machine 2 IP
+192.168.X.X slots=1 user=USER3    ← Machine 3 IP
+192.168.X.X slots=1 user=USER4    ← Machine 4 IP
+Run command (from Machine 1, where dataset lives)
 bashmpirun -np 4 --hostfile hostfile ./wildfire_parallel
-If on same laptop only (hotspot not available)
-bashmpirun --allow-run-as-root -np 4 ./wildfire_parallel
+If testing locally on one machine only
+bashmpirun -np 4 ./wildfire_parallel
 
 PHASE 6 — Testing & Performance
-Who does this: Both
+Who does this: Person 4 leads, all verify correctness
 Step 1 — Collect all execution times in this table
 VersionGrid SizeProcesses/ThreadsTime (ms)Serial500×5001?Serial1000×10001?Serial2000×20001?OpenMP1000×10002 threads?OpenMP1000×10004 threads?OpenMP1000×10008 threads?MPI+OMP1000×10002 processes?MPI+OMP1000×10004 processes?
 Step 2 — Calculate Speedup
@@ -179,8 +181,24 @@ Step 5 — Verify correctness
 Run serial and parallel on same dataset. Both must detect exact same fire pixels. If counts match → implementation is correct.
 
 PHASE 7 — Report
-Who does which section
-SectionWhoAbstractTogether (write last)IntroductionPartnerProblem statementYouBackground/conceptsPartnerMethodologyYouSerial algorithm explanationYouParallel algorithm explanationPartnerTools and environmentPartnerScreenshots/resultsBothPerformance tables/graphsYouTesting and evaluationBothSynchronization analysisPartnerLimitationsYouEthical considerationsPartnerConclusionTogetherReferencesBoth
+Who does which section (4 people)
+Section                    Who
+Abstract                   All 4 (write last)
+Introduction               Person 1
+Problem statement          Person 1
+Background/concepts          Person 1
+Methodology                Person 2
+Serial algorithm           Person 2
+Parallel algorithm         Person 3 (OpenMP + MPI sections)
+Tools and environment      Person 4 (list all 4 machines)
+Screenshots/results        Person 4
+Performance tables/graphs  Person 4
+Testing and evaluation     Person 4
+Synchronization analysis   Person 3
+Limitations                Person 2
+Ethical considerations     Person 1
+Conclusion                 All 4 (write last)
+References                 All 4
 Key points to cover in report
 Synchronization analysis section must mention:
 
@@ -198,7 +216,7 @@ Code is original work
 
 Limitations must mention:
 
-Tested on simulated MPI (or 2 laptops on hotspot)
+Tested on local MPI and/or 4 machines on same network/Tailscale
 No real satellite data used
 Network latency not measured
 GPU acceleration not included due to hardware constraints

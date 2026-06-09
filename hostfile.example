@@ -1,8 +1,13 @@
-# Copy this file to hostfile and replace with your Tailscale IPs
+# Copy this file to hostfile and replace with your Tailscale/LAN IPs
 # cp hostfile.example hostfile
 #
-# YOUR_TAILSCALE_IP slots=2
-# PARTNER_TAILSCALE_IP slots=2
+# One MPI process per machine (4-person team):
+# MACHINE1_IP slots=1
+# MACHINE2_IP slots=1 user=USER2
+# MACHINE3_IP slots=1 user=USER3
+# MACHINE4_IP slots=1 user=USER4
 
-100.0.0.1 slots=2
-100.0.0.2 slots=2
+100.0.0.1 slots=1
+100.0.0.2 slots=1 user=user2
+100.0.0.3 slots=1 user=user3
+100.0.0.4 slots=1 user=user4
